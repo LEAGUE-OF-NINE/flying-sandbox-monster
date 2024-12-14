@@ -21,8 +21,8 @@ use self::winapi::{DWORD, LPVOID, LPWSTR, PSID, PSID_AND_ATTRIBUTES,
                    SID_AND_ATTRIBUTES, ERROR_SUCCESS, ERROR_ALREADY_EXISTS, HRESULT,
                    SECURITY_CAPABILITIES, LPPROC_THREAD_ATTRIBUTE_LIST,
                    PPROC_THREAD_ATTRIBUTE_LIST, SIZE_T, PSIZE_T, PVOID, PSECURITY_CAPABILITIES,
-                   STARTUPINFOW, LPSTARTUPINFOW, HANDLE, WORD, LPBYTE, STARTF_USESTDHANDLES,
-                   SW_HIDE, ERROR_FILE_NOT_FOUND, PROCESS_INFORMATION,
+                   STARTUPINFOW, LPSTARTUPINFOW, HANDLE, WORD, LPBYTE,
+                   ERROR_FILE_NOT_FOUND, PROCESS_INFORMATION,
                    EXTENDED_STARTUPINFO_PRESENT, LPSECURITY_ATTRIBUTES};
 use std::path::Path;
 use std::ffi::OsStr;
@@ -35,7 +35,7 @@ use std::env;
 
 #[cfg(test)]
 use std::path::PathBuf;
-use winapi::{LPCWSTR, STARTF_USESHOWWINDOW};
+use winapi::LPCWSTR;
 #[cfg(test)]
 use self::winapi::{INFINITE, WAIT_OBJECT_0};
 
@@ -44,7 +44,6 @@ pub struct Profile {
     pub profile: String,
     command_line: String,
     outbound_network: bool,
-    debug: bool,
     pub sid: String,
 }
 
@@ -91,7 +90,6 @@ impl Profile {
             profile: profile.to_string(),
             command_line: path.to_string(),
             outbound_network: true,
-            debug: false,
             sid: string_sid,
         })
     }
@@ -117,10 +115,6 @@ impl Profile {
 
     pub fn enable_outbound_network(&mut self, has_outbound_network: bool) {
         self.outbound_network = has_outbound_network;
-    }
-
-    pub fn enable_debug(&mut self, is_debug: bool) {
-        self.debug = is_debug;
     }
 
     pub fn launch(&self) -> Result<HandlePtr, DWORD> {
@@ -162,69 +156,64 @@ impl Profile {
         let mut dwCreationFlags: DWORD = 0 as DWORD;
         let mut attrBuf: Vec<u8>;
 
-        if !self.debug {
-            debug!("Setting up AppContainer");
+        debug!("Setting up AppContainer");
 
-            if self.outbound_network {
-                debug!("Setting up SID_AND_ATTRIBUTES for outbound network permissions");
+        if self.outbound_network {
+            debug!("Setting up SID_AND_ATTRIBUTES for outbound network permissions");
 
-                attrs = SID_AND_ATTRIBUTES {
-                    Sid: network_allow_sid.raw_ptr,
-                    Attributes: SE_GROUP_ENABLED,
-                };
+            attrs = SID_AND_ATTRIBUTES {
+                Sid: network_allow_sid.raw_ptr,
+                Attributes: SE_GROUP_ENABLED,
+            };
 
-                capabilities.CapabilityCount = 1;
-                capabilities.Capabilities = &mut attrs;
-            }
-
-            let mut listSize: SIZE_T = 0;
-            if unsafe {
-                kernel32::InitializeProcThreadAttributeList(0 as LPPROC_THREAD_ATTRIBUTE_LIST,
-                                                            1,
-                                                            0,
-                                                            &mut listSize)
-            } !=
-                0 {
-                debug!("InitializeProcThreadAttributeList failed: GLE={:}",
-                       unsafe { kernel32::GetLastError() });
-                return Err(unsafe { kernel32::GetLastError() });
-            }
-
-            attrBuf = Vec::with_capacity(listSize as usize);
-            if unsafe {
-                kernel32::InitializeProcThreadAttributeList(attrBuf.as_mut_ptr() as
-                                                                LPPROC_THREAD_ATTRIBUTE_LIST,
-                                                            1,
-                                                            0,
-                                                            &mut listSize)
-            } ==
-                0 {
-                debug!("InitializeProcThreadAttributeList failed: GLE={:}",
-                       unsafe { kernel32::GetLastError() });
-                return Err(unsafe { kernel32::GetLastError() });
-            }
-
-            if unsafe {
-                kernel32::UpdateProcThreadAttribute(attrBuf.as_mut_ptr() as LPPROC_THREAD_ATTRIBUTE_LIST,
-                                                    0,
-                                                    PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES,
-                                                    mem::transmute::<PSECURITY_CAPABILITIES, LPVOID>(&mut capabilities),
-                                                    mem::size_of::<SECURITY_CAPABILITIES>() as SIZE_T,
-                                                    0 as PVOID,
-                                                    0 as PSIZE_T)
-            } == 0 {
-                debug!("UpdateProcThreadAttribute failed: GLE={:}", unsafe { kernel32::GetLastError() });
-                return Err(unsafe { kernel32::GetLastError() });
-            }
-
-            si.StartupInfo.cb = mem::size_of::<STARTUPINFOEXW>() as DWORD;
-            si.lpAttributeList = attrBuf.as_mut_ptr() as PPROC_THREAD_ATTRIBUTE_LIST;
-
-            dwCreationFlags |= EXTENDED_STARTUPINFO_PRESENT;
-        } else {
-            debug!("Debug mode -- no extended STARTUPINFO");
-            si.StartupInfo.cb = mem::size_of::<STARTUPINFOW>() as DWORD;
+            capabilities.CapabilityCount = 1;
+            capabilities.Capabilities = &mut attrs;
         }
+
+        let mut listSize: SIZE_T = 0;
+        if unsafe {
+            kernel32::InitializeProcThreadAttributeList(0 as LPPROC_THREAD_ATTRIBUTE_LIST,
+                                                        1,
+                                                        0,
+                                                        &mut listSize)
+        } !=
+            0 {
+            debug!("InitializeProcThreadAttributeList failed: GLE={:}",
+                   unsafe { kernel32::GetLastError() });
+            return Err(unsafe { kernel32::GetLastError() });
+        }
+
+        attrBuf = Vec::with_capacity(listSize as usize);
+        if unsafe {
+            kernel32::InitializeProcThreadAttributeList(attrBuf.as_mut_ptr() as
+                                                            LPPROC_THREAD_ATTRIBUTE_LIST,
+                                                        1,
+                                                        0,
+                                                        &mut listSize)
+        } ==
+            0 {
+            debug!("InitializeProcThreadAttributeList failed: GLE={:}",
+                   unsafe { kernel32::GetLastError() });
+            return Err(unsafe { kernel32::GetLastError() });
+        }
+
+        if unsafe {
+            kernel32::UpdateProcThreadAttribute(attrBuf.as_mut_ptr() as LPPROC_THREAD_ATTRIBUTE_LIST,
+                                                0,
+                                                PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES,
+                                                mem::transmute::<PSECURITY_CAPABILITIES, LPVOID>(&mut capabilities),
+                                                mem::size_of::<SECURITY_CAPABILITIES>() as SIZE_T,
+                                                0 as PVOID,
+                                                0 as PSIZE_T)
+        } == 0 {
+            debug!("UpdateProcThreadAttribute failed: GLE={:}", unsafe { kernel32::GetLastError() });
+            return Err(unsafe { kernel32::GetLastError() });
+        }
+
+        si.StartupInfo.cb = mem::size_of::<STARTUPINFOEXW>() as DWORD;
+        si.lpAttributeList = attrBuf.as_mut_ptr() as PPROC_THREAD_ATTRIBUTE_LIST;
+
+        dwCreationFlags |= EXTENDED_STARTUPINFO_PRESENT;
 
         let cmdLine: Vec<u16> = OsStr::new(&self.command_line)
             .encode_wide()
