@@ -63,11 +63,11 @@ fn add_acl_entry(path: &str, sid: &str) -> bool {
     }
 
     if !dacl.add_entry(acl::AccessControlEntry {
-                           entryType: acl::ACCESS_ALLOWED,
-                           flags: 0,
-                           mask: winapi::GENERIC_READ | winapi::GENERIC_EXECUTE,
-                           sid: sid.to_string(),
-                       }) {
+        entryType: acl::ACCESS_ALLOWED,
+        flags: 0,
+        mask: winapi::GENERIC_READ | winapi::GENERIC_EXECUTE,
+        sid: sid.to_string(),
+    }) {
         error!("Failed to add AppContainer profile ACL entry from {:?}",
                path);
         return false;
@@ -221,12 +221,12 @@ fn do_worker(raw_values: &str) -> i32 {
     let null_msg: DWORD = 0 as DWORD;
 
     if unsafe {
-           kernel32::WriteFile(hWrite,
-                               mem::transmute::<&DWORD, LPVOID>(&null_msg),
-                               mem::size_of::<DWORD>() as u32,
-                               &mut bytes_written,
-                               null_mut())
-       } == 0 {
+        kernel32::WriteFile(hWrite,
+                            mem::transmute::<&DWORD, LPVOID>(&null_msg),
+                            mem::size_of::<DWORD>() as u32,
+                            &mut bytes_written,
+                            null_mut())
+    } == 0 {
         return -1;
     }
 
@@ -302,7 +302,7 @@ fn event_loop(profile_name: &str, target_path: &Path) -> i32 {
         return -1;
     }
 
-#[allow(unused_assignments)]
+    #[allow(unused_assignments)]
     let mut hFile: HANDLE = INVALID_HANDLE_VALUE;
     let mut hChildRead: HANDLE = INVALID_HANDLE_VALUE;
     let mut hChildWrite: HANDLE = INVALID_HANDLE_VALUE;
@@ -427,15 +427,15 @@ fn do_main() -> i32 {
         .author("yying <andy@trailofbits.com>")
         .about("Sandboxed Microsoft Defender scanning engine example")
         .arg(Arg::with_name("name")
-                 .short("n")
-                 .long("name")
-                 .value_name("NAME")
-                 .default_value("default_msmpeng_profile")
-                 .help("AppContainer profile name"))
+            .short("n")
+            .long("name")
+            .value_name("NAME")
+            .default_value("default_msmpeng_profile")
+            .help("AppContainer profile name"))
         .arg(Arg::with_name("path")
-                 .index(1)
-                 .required(true)
-                 .help("Path to file to scan"))
+            .index(1)
+            .required(true)
+            .help("Path to file to scan"))
         .get_matches();
 
     if let Err(_) = env_logger::init() {
@@ -454,7 +454,7 @@ fn do_main() -> i32 {
 
 fn main() {
     process::exit(match env::var(kWorkerEnvVar) {
-                      Ok(val) => do_worker(&val),
-                      Err(_) => do_main(),
-                  });
+        Ok(val) => do_worker(&val),
+        Err(_) => do_main(),
+    });
 }

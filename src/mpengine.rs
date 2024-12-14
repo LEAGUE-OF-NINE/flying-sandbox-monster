@@ -302,7 +302,7 @@ impl ops::BitAnd<Scan> for u32 {
     }
 }
 
-DEF_STRUCT!{struct ENGINE_INFO {
+DEF_STRUCT! {struct ENGINE_INFO {
   field_0: DWORD,
   field_4: DWORD,
   field_8: DWORD,
@@ -310,7 +310,7 @@ DEF_STRUCT!{struct ENGINE_INFO {
 }}
 pub type PENGINE_INFO = *mut ENGINE_INFO;
 
-DEF_STRUCT!{struct ENGINE_CONFIG {
+DEF_STRUCT! {struct ENGINE_CONFIG {
   EngineFlags: DWORD,
   Inclusions: PWCHAR,
   Exceptions: PVOID,
@@ -330,12 +330,12 @@ DEF_STRUCT!{struct ENGINE_CONFIG {
 }}
 pub type PENGINE_CONFIG = *mut ENGINE_CONFIG;
 
-DEF_STRUCT!{struct ENGINE_CONTEXT {
+DEF_STRUCT! {struct ENGINE_CONTEXT {
   field_0: DWORD,
 }}
 pub type PENGINE_CONTEXT = *mut ENGINE_CONTEXT;
 
-DEF_STRUCT!{struct BOOTENGINE_PARAMS {
+DEF_STRUCT! {struct BOOTENGINE_PARAMS {
   ClientVersion: DWORD,
   SignatureLocation: PWCHAR,
   SpynetSource: PVOID,
@@ -371,7 +371,7 @@ DEF_STRUCT!{struct BOOTENGINE_PARAMS {
 }}
 pub type PBOOTENGINE_PARAMS = *mut BOOTENGINE_PARAMS;
 
-DEF_STRUCT!{struct OPENSCAN_PARAMS {
+DEF_STRUCT! {struct OPENSCAN_PARAMS {
   Version: DWORD,
   ScanSource: DWORD,
   Flags: DWORD,
@@ -391,7 +391,7 @@ DEF_STRUCT!{struct OPENSCAN_PARAMS {
 #[allow(dead_code)]
 pub type POPENSCAN_PARAMS = *mut OPENSCAN_PARAMS;
 
-DEF_STRUCT!{struct SCANSTRUCT {
+DEF_STRUCT! {struct SCANSTRUCT {
   field_0: DWORD,
   Flags: DWORD,
   FileName: PCHAR,
@@ -418,7 +418,7 @@ DEF_STRUCT!{struct SCANSTRUCT {
 }}
 pub type PSCANSTRUCT = *mut SCANSTRUCT;
 
-DEF_STRUCT!{struct SCAN_REPLY {
+DEF_STRUCT! {struct SCAN_REPLY {
   EngineScanCallback: extern fn(this: PSCANSTRUCT) -> DWORD,
   field_4: DWORD,
   UserPtr: PVOID,
@@ -426,7 +426,7 @@ DEF_STRUCT!{struct SCAN_REPLY {
 }}
 pub type PSCAN_REPLY = *mut SCAN_REPLY;
 
-DEF_STRUCT!{struct SCANSTREAM_PARAMS {
+DEF_STRUCT! {struct SCANSTREAM_PARAMS {
   Descriptor: PSTREAMBUFFER_DESCRIPTOR,
   ScanReply: PSCAN_REPLY,
   UnknownB: DWORD,
@@ -434,7 +434,7 @@ DEF_STRUCT!{struct SCANSTREAM_PARAMS {
 }}
 pub type PSCANSTREAM_PARAMS = *mut SCANSTREAM_PARAMS;
 
-DEF_STRUCT!{struct STREAMBUFFER_DESCRIPTOR {
+DEF_STRUCT! {struct STREAMBUFFER_DESCRIPTOR {
   UserPtr: PVOID,
   Read: extern fn(this: PVOID, Offset: DWORD64, Buffer: PVOID, Size: DWORD, SizeRead: PDWORD) -> DWORD,
   Write: extern fn(this: PVOID, Offset: DWORD64, Buffer: PVOID, Size: DWORD, TotalWritten: PDWORD) -> DWORD,
@@ -446,7 +446,7 @@ DEF_STRUCT!{struct STREAMBUFFER_DESCRIPTOR {
 }}
 pub type PSTREAMBUFFER_DESCRIPTOR = *mut STREAMBUFFER_DESCRIPTOR;
 
-DEF_STRUCT!{struct USERPTR_HANDLES {
+DEF_STRUCT! {struct USERPTR_HANDLES {
     hRead: HANDLE,
     hWrite: HANDLE,
 }}
@@ -507,8 +507,8 @@ extern "C" fn doRead(this: PVOID,
     let ptr: *const USERPTR_HANDLES =
         unsafe { mem::transmute::<PVOID, *const USERPTR_HANDLES>(this) };
     if unsafe {
-           kernel32::SetFilePointerEx((*ptr).hRead, Offset as i64, null_mut(), FILE_BEGIN)
-       } == 0 {
+        kernel32::SetFilePointerEx((*ptr).hRead, Offset as i64, null_mut(), FILE_BEGIN)
+    } == 0 {
         return 0;
     }
 
@@ -552,22 +552,22 @@ extern "C" fn doScanCallback(this: PSCANSTRUCT) -> DWORD {
     let mut writeSize: DWORD = 0 as DWORD;
 
     if unsafe {
-           kernel32::WriteFile((*ptr).hWrite,
-                               mem::transmute::<&DWORD, LPVOID>(&size),
-                               mem::size_of::<DWORD>() as DWORD,
-                               &mut writeSize,
-                               null_mut())
-       } == 0 {
+        kernel32::WriteFile((*ptr).hWrite,
+                            mem::transmute::<&DWORD, LPVOID>(&size),
+                            mem::size_of::<DWORD>() as DWORD,
+                            &mut writeSize,
+                            null_mut())
+    } == 0 {
         return 1;
     }
 
     if unsafe {
-           kernel32::WriteFile((*ptr).hWrite,
-                               mem::transmute::<*const u8, LPVOID>(bytes.as_ptr()),
-                               size,
-                               &mut writeSize,
-                               null_mut())
-       } == 0 {
+        kernel32::WriteFile((*ptr).hWrite,
+                            mem::transmute::<*const u8, LPVOID>(bytes.as_ptr()),
+                            size,
+                            &mut writeSize,
+                            null_mut())
+    } == 0 {
         return 1;
     }
     0
@@ -604,7 +604,7 @@ impl MpEngine {
         target.intercept("ntdll.dll", "RtlGetVersion", unsafe {
             mem::transmute::<extern "system" fn(LPOSVERSIONINFOEXW)
                                                 -> NTSTATUS,
-                             LPVOID>(myRtlGetVersion)
+                LPVOID>(myRtlGetVersion)
         });
 
         let mut support_path = PathBuf::from(path);
@@ -710,12 +710,12 @@ pub fn read_scan_response(hRead: HANDLE) -> Option<ScanReplyMsg> {
     let mut size: DWORD = 0 as DWORD;
 
     if unsafe {
-           kernel32::ReadFile(hRead,
-                              mem::transmute::<&mut DWORD, LPVOID>(&mut size),
-                              mem::size_of::<DWORD>() as DWORD,
-                              &mut bytes_read,
-                              null_mut())
-       } == 0 {
+        kernel32::ReadFile(hRead,
+                           mem::transmute::<&mut DWORD, LPVOID>(&mut size),
+                           mem::size_of::<DWORD>() as DWORD,
+                           &mut bytes_read,
+                           null_mut())
+    } == 0 {
         return None;
     }
 
@@ -731,12 +731,12 @@ pub fn read_scan_response(hRead: HANDLE) -> Option<ScanReplyMsg> {
     let buf_ptr = raw_buf.as_mut_ptr();
 
     if unsafe {
-           kernel32::ReadFile(hRead,
-                              mem::transmute::<*mut u8, LPVOID>(buf_ptr),
-                              size,
-                              &mut bytes_read,
-                              null_mut())
-       } == 0 {
+        kernel32::ReadFile(hRead,
+                           mem::transmute::<*mut u8, LPVOID>(buf_ptr),
+                           size,
+                           &mut bytes_read,
+                           null_mut())
+    } == 0 {
         return None;
     }
 

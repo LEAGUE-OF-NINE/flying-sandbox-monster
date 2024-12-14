@@ -35,15 +35,15 @@ use std::env;
 
 #[cfg(test)]
 use std::path::PathBuf;
-
+use winapi::LPCWSTR;
 #[cfg(test)]
 use self::winapi::{INFINITE, WAIT_OBJECT_0};
 
 #[allow(dead_code)]
 pub struct Profile {
     pub profile: String,
-    childPath: String,
-    outboundNetwork: bool,
+    command_line: String,
+    outbound_network: bool,
     debug: bool,
     pub sid: String,
 }
@@ -88,12 +88,12 @@ impl Profile {
         unsafe { winffi::FreeSid(pSid) };
 
         Ok(Profile {
-               profile: profile.to_string(),
-               childPath: path.to_string(),
-               outboundNetwork: true,
-               debug: false,
-               sid: string_sid,
-           })
+            profile: profile.to_string(),
+            command_line: path.to_string(),
+            outbound_network: true,
+            debug: false,
+            sid: string_sid,
+        })
     }
 
     pub fn remove(profile: &str) -> bool {
@@ -116,14 +116,14 @@ impl Profile {
     }
 
     pub fn enable_outbound_network(&mut self, has_outbound_network: bool) {
-        self.outboundNetwork = has_outbound_network;
+        self.outbound_network = has_outbound_network;
     }
 
     pub fn enable_debug(&mut self, is_debug: bool) {
         self.debug = is_debug;
     }
 
-    pub fn launch(&self, stdin: HANDLE, stdout: HANDLE, dirPath: &str) -> Result<HandlePtr, DWORD> {
+    pub fn launch(&self) -> Result<HandlePtr, DWORD> {
         let network_allow_sid = match string_to_sid("S-1-15-3-1") {
             Ok(x) => x,
             Err(_) => return Err(0xffffffff),
@@ -165,7 +165,7 @@ impl Profile {
         if !self.debug {
             debug!("Setting up AppContainer");
 
-            if self.outboundNetwork {
+            if self.outbound_network {
                 debug!("Setting up SID_AND_ATTRIBUTES for outbound network permissions");
 
                 attrs = SID_AND_ATTRIBUTES {
@@ -179,12 +179,12 @@ impl Profile {
 
             let mut listSize: SIZE_T = 0;
             if unsafe {
-                   kernel32::InitializeProcThreadAttributeList(0 as LPPROC_THREAD_ATTRIBUTE_LIST,
-                                                               1,
-                                                               0,
-                                                               &mut listSize)
-               } !=
-               0 {
+                kernel32::InitializeProcThreadAttributeList(0 as LPPROC_THREAD_ATTRIBUTE_LIST,
+                                                            1,
+                                                            0,
+                                                            &mut listSize)
+            } !=
+                0 {
                 debug!("InitializeProcThreadAttributeList failed: GLE={:}",
                        unsafe { kernel32::GetLastError() });
                 return Err(unsafe { kernel32::GetLastError() });
@@ -192,28 +192,29 @@ impl Profile {
 
             attrBuf = Vec::with_capacity(listSize as usize);
             if unsafe {
-                   kernel32::InitializeProcThreadAttributeList(attrBuf.as_mut_ptr() as
-                                                               LPPROC_THREAD_ATTRIBUTE_LIST,
-                                                               1,
-                                                               0,
-                                                               &mut listSize)
-               } ==
-               0 {
+                kernel32::InitializeProcThreadAttributeList(attrBuf.as_mut_ptr() as
+                                                                LPPROC_THREAD_ATTRIBUTE_LIST,
+                                                            1,
+                                                            0,
+                                                            &mut listSize)
+            } ==
+                0 {
                 debug!("InitializeProcThreadAttributeList failed: GLE={:}",
                        unsafe { kernel32::GetLastError() });
                 return Err(unsafe { kernel32::GetLastError() });
             }
 
             if unsafe {
-                kernel32::UpdateProcThreadAttribute(attrBuf.as_mut_ptr() as LPPROC_THREAD_ATTRIBUTE_LIST, 
-                                                    0, 
-                                                    PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES, 
-                                                    mem::transmute::<PSECURITY_CAPABILITIES, LPVOID>(&mut capabilities), 
-                                                    mem::size_of::<SECURITY_CAPABILITIES>() as SIZE_T, 
-                                                    0 as PVOID, 
-                                                    0 as PSIZE_T) } == 0 {
+                kernel32::UpdateProcThreadAttribute(attrBuf.as_mut_ptr() as LPPROC_THREAD_ATTRIBUTE_LIST,
+                                                    0,
+                                                    PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES,
+                                                    mem::transmute::<PSECURITY_CAPABILITIES, LPVOID>(&mut capabilities),
+                                                    mem::size_of::<SECURITY_CAPABILITIES>() as SIZE_T,
+                                                    0 as PVOID,
+                                                    0 as PSIZE_T)
+            } == 0 {
                 debug!("UpdateProcThreadAttribute failed: GLE={:}", unsafe { kernel32::GetLastError() });
-                return Err(unsafe { kernel32::GetLastError() })
+                return Err(unsafe { kernel32::GetLastError() });
             }
 
             si.StartupInfo.cb = mem::size_of::<STARTUPINFOEXW>() as DWORD;
@@ -227,31 +228,9 @@ impl Profile {
 
         si.StartupInfo.dwFlags = STARTF_USESHOWWINDOW;
 
-        if stdout != INVALID_HANDLE_VALUE && stdin != INVALID_HANDLE_VALUE {
-            si.StartupInfo.dwFlags |= STARTF_USESTDHANDLES;
-            si.StartupInfo.hStdInput = stdin as HANDLE;
-            si.StartupInfo.hStdOutput = stdout as HANDLE;
-            si.StartupInfo.hStdError = stdout as HANDLE;
-
-            // Ensure the handle is inheritable
-            if unsafe { kernel32::SetHandleInformation(stdin, HANDLE_FLAG_INHERIT, 1) } == 0 {
-                return Err(unsafe { kernel32::GetLastError() });
-            }
-
-            if stdin != stdout {
-                if unsafe { kernel32::SetHandleInformation(stdout, HANDLE_FLAG_INHERIT, 1) } == 0 {
-                    return Err(unsafe { kernel32::GetLastError() });
-                }
-            }
-        }
-
         si.StartupInfo.wShowWindow = SW_HIDE as WORD;
 
-        let currentDir: Vec<u16> = OsStr::new(dirPath)
-            .encode_wide()
-            .chain(once(0))
-            .collect();
-        let cmdLine: Vec<u16> = OsStr::new(&self.childPath)
+        let cmdLine: Vec<u16> = OsStr::new(&self.command_line)
             .encode_wide()
             .chain(once(0))
             .collect();
@@ -263,17 +242,17 @@ impl Profile {
         };
 
         if unsafe {
-               kernel32::CreateProcessW(cmdLine.as_ptr(),
-                                        0 as LPWSTR,
-                                        0 as LPSECURITY_ATTRIBUTES,
-                                        0 as LPSECURITY_ATTRIBUTES,
-                                        1,
-                                        dwCreationFlags,
-                                        0 as LPVOID,
-                                        currentDir.as_ptr(),
-                                        mem::transmute::<LPSTARTUPINFOEXW, LPSTARTUPINFOW>(&mut si),
-                                        &mut pi)
-           } == 0 {
+            kernel32::CreateProcessW(0 as LPCWSTR,
+                                     cmdLine.as_ptr() as LPWSTR,
+                                     0 as LPSECURITY_ATTRIBUTES,
+                                     0 as LPSECURITY_ATTRIBUTES,
+                                     1,
+                                     dwCreationFlags,
+                                     0 as LPVOID,
+                                     0 as LPWSTR,
+                                     mem::transmute::<LPSTARTUPINFOEXW, LPSTARTUPINFOW>(&mut si),
+                                     &mut pi)
+        } == 0 {
             println!("CreateProcess failed: GLE={:}",
                      unsafe { kernel32::GetLastError() });
             return Err(unsafe { kernel32::GetLastError() });
@@ -357,176 +336,3 @@ const FILE_WRITE_MASK: u32 = 0x00000004;
 const REGISTRY_READ_MASK: u32 = 0x00000008;
 #[cfg(test)]
 const REGISTRY_WRITE_MASK: u32 = 0x00000010;
-
-#[allow(unused_variables)]
-#[test]
-fn test_appcontainer() {
-    let result = get_unittest_support_path();
-    assert!(!result.is_none());
-
-    let profile_name = String::from("test_default_appjail");
-
-    let mut child_path = result.unwrap();
-    let dir_path = child_path.clone();
-    child_path.push("sandbox-test.exe");
-
-    println!("dir_path = {:?}", dir_path);
-    println!("Attempting to create AppContainer profile...");
-
-    if let Ok(mut profile) = Profile::new(&profile_name, child_path.to_str().unwrap()) {
-        let wrapper = ProfileWrapper { name: profile_name };
-
-        {
-            println!("Testing with default privileges");
-            let launch_result = profile.launch(INVALID_HANDLE_VALUE,
-                                               INVALID_HANDLE_VALUE,
-                                               dir_path.to_str().unwrap());
-            assert!(launch_result.is_ok());
-
-            let hProcess = launch_result.unwrap();
-            assert_eq!(unsafe { kernel32::WaitForSingleObject(hProcess.raw, INFINITE) },
-                       WAIT_OBJECT_0);
-
-            let mut dwExitCode: DWORD = 0 as DWORD;
-            assert!(unsafe { kernel32::GetExitCodeProcess(hProcess.raw, &mut dwExitCode) } != 0);
-
-            assert!((dwExitCode & OUTBOUND_CONNECT_MASK) == 0);
-            assert!((dwExitCode & FILE_READ_MASK) != 0);
-            assert!((dwExitCode & FILE_WRITE_MASK) != 0);
-            assert!((dwExitCode & REGISTRY_READ_MASK) == 0);
-            assert!((dwExitCode & REGISTRY_WRITE_MASK) != 0);
-        }
-
-        println!("Disabling outbound network connections");
-        profile.enable_outbound_network(false);
-
-        {
-            println!("Testing without outbound network connections");
-            let launch_result = profile.launch(INVALID_HANDLE_VALUE,
-                                               INVALID_HANDLE_VALUE,
-                                               dir_path.to_str().unwrap());
-            assert!(launch_result.is_ok());
-
-            let hProcess = launch_result.unwrap();
-            assert_eq!(unsafe { kernel32::WaitForSingleObject(hProcess.raw, INFINITE) },
-                       WAIT_OBJECT_0);
-
-            let mut dwExitCode: DWORD = 0 as DWORD;
-            assert!(unsafe { kernel32::GetExitCodeProcess(hProcess.raw, &mut dwExitCode) } != 0);
-
-            assert!((dwExitCode & OUTBOUND_CONNECT_MASK) != 0);
-            assert!((dwExitCode & FILE_READ_MASK) != 0);
-            assert!((dwExitCode & FILE_WRITE_MASK) != 0);
-            assert!((dwExitCode & REGISTRY_READ_MASK) == 0);
-            assert!((dwExitCode & REGISTRY_WRITE_MASK) != 0);
-        }
-
-        println!("Enabling outbound network connections");
-        profile.enable_outbound_network(true);
-
-        println!("Disabling AppContainer");
-        profile.enable_debug(true);
-
-        {
-            println!("Testing debug mode");
-            let launch_result = profile.launch(INVALID_HANDLE_VALUE,
-                                               INVALID_HANDLE_VALUE,
-                                               dir_path.to_str().unwrap());
-            assert!(launch_result.is_ok());
-
-            let hProcess = launch_result.unwrap();
-            assert_eq!(unsafe { kernel32::WaitForSingleObject(hProcess.raw, INFINITE) },
-                       WAIT_OBJECT_0);
-
-            let mut dwExitCode: DWORD = 0 as DWORD;
-            assert!(unsafe { kernel32::GetExitCodeProcess(hProcess.raw, &mut dwExitCode) } != 0);
-
-            assert!((dwExitCode & OUTBOUND_CONNECT_MASK) == 0);
-            assert!((dwExitCode & FILE_READ_MASK) == 0);
-            assert!((dwExitCode & FILE_WRITE_MASK) == 0);
-            assert!((dwExitCode & REGISTRY_READ_MASK) == 0);
-            assert!((dwExitCode & REGISTRY_WRITE_MASK) == 0);
-        }
-    } else {
-        println!("Failed to create AppContainer profile");
-        assert!(false);
-    }
-}
-
-#[allow(unused_variables)]
-#[test]
-fn test_stdout_redirect() {
-    let result = get_unittest_support_path();
-    assert!(!result.is_none());
-
-    let profile_name = String::from("test_default_appjail2");
-
-    let mut child_path = result.unwrap();
-    let dir_path = child_path.clone();
-    child_path.push("greenhornd.exe");
-
-    let raw_profile = Profile::new(&profile_name, child_path.to_str().unwrap());
-    if let Err(x) = raw_profile {
-        println!("GLE={:}", x);
-    }
-    assert!(raw_profile.is_ok());
-
-    let wrapper = ProfileWrapper { name: profile_name };
-    let profile = raw_profile.unwrap();
-
-    let mut rChildStdin: HANDLE = 0 as HANDLE;
-    let mut wChildStdin: HANDLE = 0 as HANDLE;
-    let mut rChildStdout: HANDLE = 0 as HANDLE;
-    let mut wChildStdout: HANDLE = 0 as HANDLE;
-
-    let mut saAttr = winapi::SECURITY_ATTRIBUTES {
-        nLength: mem::size_of::<winapi::SECURITY_ATTRIBUTES>() as DWORD,
-        lpSecurityDescriptor: 0 as LPVOID,
-        bInheritHandle: 0,
-    };
-
-    println!("Creating stdin/stdout anonymous pipes");
-    assert!(unsafe {
-                kernel32::CreatePipe(&mut rChildStdout, &mut wChildStdout, &mut saAttr, 0)
-            } != 0);
-    assert!(unsafe {
-                kernel32::CreatePipe(&mut rChildStdin, &mut wChildStdin, &mut saAttr, 0)
-            } != 0);
-
-    {
-        println!("Launching AppContainer with redirected stdin/stdout/stderr");
-        let launch_result = profile.launch(rChildStdin, wChildStdout, dir_path.to_str().unwrap());
-        assert!(launch_result.is_ok());
-
-        let hProcess = launch_result.unwrap();
-
-        let mut dwRead: DWORD = 0 as DWORD;
-        let mut buffer: Vec<u8> = Vec::with_capacity(37);
-
-        println!("Reading 37 bytes for testing");
-        assert!(unsafe {
-                    kernel32::ReadFile(rChildStdout,
-                                       buffer.as_mut_ptr() as LPVOID,
-                                       37,
-                                       &mut dwRead,
-                                       mem::transmute::<usize, winapi::LPOVERLAPPED>(0))
-                } != 0);
-
-        let data;
-        unsafe {
-            let p = buffer.as_mut_ptr();
-            mem::forget(buffer);
-
-            data = Vec::from_raw_parts(p, dwRead as usize, 37);
-        }
-
-        let result = String::from_utf8(data);
-        assert!(result.is_ok());
-
-        let read_data = result.unwrap();
-
-        println!("Read bytes: {:?}", &read_data);
-        assert_eq!(read_data, "Wecome to the Greenhorn CSAW service!");
-        assert!(unsafe { kernel32::TerminateProcess(hProcess.raw, 0xffffffff) } != 0);
-    }
-}

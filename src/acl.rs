@@ -181,8 +181,8 @@ impl SimpleDacl {
         }
 
         if self.entries
-               .iter()
-               .any(|x| x.sid == entry.sid && x.entryType == entry.entryType) {
+            .iter()
+            .any(|x| x.sid == entry.sid && x.entryType == entry.entryType) {
             return false;
         }
 
@@ -197,8 +197,8 @@ impl SimpleDacl {
 
     pub fn entry_exists(&self, sid: &str, entryType: ACL_ENTRY_TYPE) -> Option<usize> {
         let index = match self.entries
-                  .iter()
-                  .position(|x| x.sid == sid && x.entryType == entryType) {
+            .iter()
+            .position(|x| x.sid == sid && x.entryType == entryType) {
             Some(x) => x,
             _ => return None,
         };
@@ -220,9 +220,9 @@ impl SimpleDacl {
         let mut securityDesc: Vec<u8> = Vec::with_capacity(SECURITY_DESCRIPTOR_MIN_LENGTH);
 
         if unsafe {
-               winffi::InitializeSecurityDescriptor(securityDesc.as_mut_ptr() as LPVOID,
-                                                    SECURITY_DESCRIPTOR_REVISION)
-           } == 0 {
+            winffi::InitializeSecurityDescriptor(securityDesc.as_mut_ptr() as LPVOID,
+                                                 SECURITY_DESCRIPTOR_REVISION)
+        } == 0 {
             return Err(unsafe { kernel32::GetLastError() });
         }
 
@@ -240,10 +240,10 @@ impl SimpleDacl {
 
         let mut aclBuffer: Vec<u8> = Vec::with_capacity(aclSize);
         if unsafe {
-               winffi::InitializeAcl(aclBuffer.as_mut_ptr() as PACL,
-                                     aclSize as DWORD,
-                                     ACL_REVISION)
-           } == 0 {
+            winffi::InitializeAcl(aclBuffer.as_mut_ptr() as PACL,
+                                  aclSize as DWORD,
+                                  ACL_REVISION)
+        } == 0 {
             return Err(unsafe { kernel32::GetLastError() });
         }
 
@@ -253,21 +253,21 @@ impl SimpleDacl {
             match entry.entryType {
                 0 => {
                     if unsafe {
-                           winffi::AddAccessAllowedAce(aclBuffer.as_mut_ptr() as PACL,
-                                                       ACL_REVISION,
-                                                       entry.mask,
-                                                       sid.raw_ptr)
-                       } == 0 {
+                        winffi::AddAccessAllowedAce(aclBuffer.as_mut_ptr() as PACL,
+                                                    ACL_REVISION,
+                                                    entry.mask,
+                                                    sid.raw_ptr)
+                    } == 0 {
                         return Err(unsafe { kernel32::GetLastError() });
                     }
                 }
                 1 => {
                     if unsafe {
-                           winffi::AddAccessDeniedAce(aclBuffer.as_mut_ptr() as PACL,
-                                                      ACL_REVISION,
-                                                      entry.mask,
-                                                      sid.raw_ptr)
-                       } == 0 {
+                        winffi::AddAccessDeniedAce(aclBuffer.as_mut_ptr() as PACL,
+                                                   ACL_REVISION,
+                                                   entry.mask,
+                                                   sid.raw_ptr)
+                    } == 0 {
                         return Err(unsafe { kernel32::GetLastError() });
                     }
                 }
@@ -276,19 +276,19 @@ impl SimpleDacl {
         }
 
         if unsafe {
-               winffi::SetSecurityDescriptorDacl(securityDesc.as_mut_ptr() as PSECURITY_DESCRIPTOR,
-                                                 1,
-                                                 aclBuffer.as_ptr() as PACL,
-                                                 0)
-           } == 0 {
+            winffi::SetSecurityDescriptorDacl(securityDesc.as_mut_ptr() as PSECURITY_DESCRIPTOR,
+                                              1,
+                                              aclBuffer.as_ptr() as PACL,
+                                              0)
+        } == 0 {
             return Err(unsafe { kernel32::GetLastError() });
         }
 
         if unsafe {
-               winffi::SetFileSecurityW(wPath.as_ptr(),
-                                        DACL_SECURITY_INFORMATION,
-                                        securityDesc.as_ptr() as PSECURITY_DESCRIPTOR)
-           } == 0 {
+            winffi::SetFileSecurityW(wPath.as_ptr(),
+                                     DACL_SECURITY_INFORMATION,
+                                     securityDesc.as_ptr() as PSECURITY_DESCRIPTOR)
+        } == 0 {
             return Err(unsafe { kernel32::GetLastError() });
         }
 
@@ -303,48 +303,48 @@ fn test_add_remove_entry() {
 
     // Bad sid
     assert!(!acl.add_entry(AccessControlEntry {
-                               sid: String::from("FAKESID"),
-                               mask: GENERIC_READ,
-                               entryType: ACCESS_ALLOWED,
-                               flags: 0,
-                           }));
+        sid: String::from("FAKESID"),
+        mask: GENERIC_READ,
+        entryType: ACCESS_ALLOWED,
+        flags: 0,
+    }));
     assert_eq!(acl.get_entries().iter().count(), 0);
 
     // Bad entry type
     assert!(!acl.add_entry(AccessControlEntry {
-                               sid: String::from("S-1-1-0"),
-                               mask: GENERIC_READ,
-                               entryType: 5,
-                               flags: 0,
-                           }));
+        sid: String::from("S-1-1-0"),
+        mask: GENERIC_READ,
+        entryType: 5,
+        flags: 0,
+    }));
     assert_eq!(acl.get_entries().iter().count(), 0);
     assert!(acl.entry_exists(&String::from("S-1-1-0"), 5).is_none());
 
     assert!(acl.add_entry(AccessControlEntry {
-                              sid: String::from("S-1-1-1"),
-                              mask: GENERIC_WRITE,
-                              entryType: ACCESS_DENIED,
-                              flags: 0,
-                          }));
+        sid: String::from("S-1-1-1"),
+        mask: GENERIC_WRITE,
+        entryType: ACCESS_DENIED,
+        flags: 0,
+    }));
     assert_eq!(acl.get_entries().iter().count(), 1);
     assert!(acl.entry_exists(&String::from("S-1-1-1"), ACCESS_DENIED)
-                .is_some());
+        .is_some());
 
     // Duplicate SID entry added
     assert!(!acl.add_entry(AccessControlEntry {
-                               sid: String::from("S-1-1-1"),
-                               mask: GENERIC_WRITE,
-                               entryType: ACCESS_DENIED,
-                               flags: 0,
-                           }));
+        sid: String::from("S-1-1-1"),
+        mask: GENERIC_WRITE,
+        entryType: ACCESS_DENIED,
+        flags: 0,
+    }));
     assert_eq!(acl.get_entries().iter().count(), 1);
 
     assert!(acl.add_entry(AccessControlEntry {
-                              sid: String::from("S-1-1-2"),
-                              mask: GENERIC_READ,
-                              entryType: ACCESS_ALLOWED,
-                              flags: 0,
-                          }));
+        sid: String::from("S-1-1-2"),
+        mask: GENERIC_READ,
+        entryType: ACCESS_ALLOWED,
+        flags: 0,
+    }));
     assert_eq!(acl.get_entries().iter().count(), 2);
 
     {
@@ -380,7 +380,6 @@ fn test_add_remove_entry() {
         assert_eq!(entry.mask, GENERIC_READ);
         assert_eq!(entry.entryType, ACCESS_ALLOWED);
     }
-
 }
 
 #[test]
@@ -449,11 +448,11 @@ fn test_add_and_remove_acl_entry() {
     {
         let mut acl = SimpleDacl::new();
         assert!(acl.add_entry(AccessControlEntry {
-                                  sid: String::from("S-1-1-0"),
-                                  mask: GENERIC_ALL,
-                                  entryType: ACCESS_ALLOWED,
-                                  flags: 0,
-                              }));
+            sid: String::from("S-1-1-0"),
+            mask: GENERIC_ALL,
+            entryType: ACCESS_ALLOWED,
+            flags: 0,
+        }));
         assert_eq!(acl.apply_to_path(tmp_file_path), Ok(0));
 
         acl = match SimpleDacl::from_path(tmp_file_path) {

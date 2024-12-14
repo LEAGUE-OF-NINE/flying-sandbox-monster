@@ -31,7 +31,7 @@ const PROC_THREAD_ATTRIBUTE_ADDITIVE: DWORD = 0x00040000;
 const ProcThreadAttributeSecurityCapabilities: DWORD = 9;
 pub const PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES: SIZE_T =
     ((ProcThreadAttributeSecurityCapabilities & PROC_THREAD_ATTRIBUTE_NUMBER) |
-     PROC_THREAD_ATTRIBUTE_INPUT) as SIZE_T;
+        PROC_THREAD_ATTRIBUTE_INPUT) as SIZE_T;
 
 pub const GENERIC_ALL: DWORD = 0x10000000 as DWORD;
 pub const GENERIC_READ: DWORD = 0x80000000 as DWORD;
@@ -72,36 +72,36 @@ macro_rules! DEF_STRUCT {
     };
 }
 
-ENUM!{enum ACL_INFORMATION_CLASS {
+ENUM! {enum ACL_INFORMATION_CLASS {
     AclRevisionInformation = 1,
     AclSizeInformation,
 }}
 
-DEF_STRUCT!{struct ACE_HEADER {
+DEF_STRUCT! {struct ACE_HEADER {
     AceType: BYTE,
     AceFlags: BYTE,
     AceSize: WORD,
 }}
 
-DEF_STRUCT!{struct ACCESS_ALLOWED_ACE {
+DEF_STRUCT! {struct ACCESS_ALLOWED_ACE {
     Header: ACE_HEADER,
     Mask: ACCESS_MASK,
     SidStart: DWORD,
 }}
 
-DEF_STRUCT!{struct ACCESS_DENIED_ACE {
+DEF_STRUCT! {struct ACCESS_DENIED_ACE {
     Header: ACE_HEADER,
     Mask: ACCESS_MASK,
     SidStart: DWORD,
 }}
 
-DEF_STRUCT!{struct ACL_SIZE_INFORMATION {
+DEF_STRUCT! {struct ACL_SIZE_INFORMATION {
     AceCount: DWORD,
     AclBytesInUse: DWORD,
     AclBytesFree: DWORD,
 }}
 
-DEF_STRUCT!{struct STARTUPINFOEXW {
+DEF_STRUCT! {struct STARTUPINFOEXW {
     StartupInfo: STARTUPINFOW,
     lpAttributeList: PPROC_THREAD_ATTRIBUTE_LIST,
 }}
@@ -150,7 +150,7 @@ pub fn sid_to_string(pSid: PSID) -> Result<String, DWORD> {
     let mut rawStringSid: LPWSTR = 0 as LPWSTR;
 
     if unsafe { ConvertSidToStringSidW(pSid, &mut rawStringSid) } == 0 ||
-       rawStringSid == (0 as LPWSTR) {
+        rawStringSid == (0 as LPWSTR) {
         return Err(unsafe { kernel32::GetLastError() });
     }
 

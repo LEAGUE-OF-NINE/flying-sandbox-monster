@@ -36,7 +36,7 @@ macro_rules! DEF_STRUCT {
     };
 }
 
-DEF_STRUCT!{struct IMAGE_DOS_HEADER {
+DEF_STRUCT! {struct IMAGE_DOS_HEADER {
   e_magic: WORD,
   e_cblp: WORD,
   e_cp: WORD,
@@ -59,7 +59,7 @@ DEF_STRUCT!{struct IMAGE_DOS_HEADER {
 }}
 pub type PIMAGE_DOS_HEADER = *mut IMAGE_DOS_HEADER;
 
-DEF_STRUCT!{struct IMAGE_IMPORT_DESCRIPTOR {
+DEF_STRUCT! {struct IMAGE_IMPORT_DESCRIPTOR {
     OriginalFirstThunk: DWORD,
     TimeDateStamp: DWORD,
     ForwarderChain: DWORD,
@@ -68,12 +68,12 @@ DEF_STRUCT!{struct IMAGE_IMPORT_DESCRIPTOR {
 }}
 pub type PIMAGE_IMPORT_DESCRIPTOR = *mut IMAGE_IMPORT_DESCRIPTOR;
 
-DEF_STRUCT!{struct IMAGE_THUNK_DATA32 {
+DEF_STRUCT! {struct IMAGE_THUNK_DATA32 {
     u1: DWORD,
 }}
 pub type PIMAGE_THUNK_DATA32 = *mut IMAGE_THUNK_DATA32;
 
-DEF_STRUCT!{struct IMAGE_IMPORT_BY_NAME {
+DEF_STRUCT! {struct IMAGE_IMPORT_BY_NAME {
     Hint: WORD,
     Name: BYTE,
 }}
@@ -99,8 +99,8 @@ impl MemoryWriteLock {
         };
 
         if unsafe {
-               kernel32::VirtualProtect(addr, size, PAGE_READWRITE, &mut lock.old_protect)
-           } == 0 {
+            kernel32::VirtualProtect(addr, size, PAGE_READWRITE, &mut lock.old_protect)
+        } == 0 {
             return None;
         }
 
@@ -186,7 +186,7 @@ impl Module {
         let nt_hdr: PIMAGE_NT_HEADERS32 =
             unsafe {
                 mem::transmute::<PBYTE, PIMAGE_NT_HEADERS32>(base_addr.offset((*dos_hdr).e_lfanew as
-                                                                              isize))
+                    isize))
             };
 
         if unsafe { (*nt_hdr).Signature } != IMAGE_NT_SIGNATURE {
@@ -223,16 +223,16 @@ impl Module {
                 let thunk_ptr: PIMAGE_THUNK_DATA32 =
                     unsafe {
                         mem::transmute::<PBYTE,
-                                         PIMAGE_THUNK_DATA32>(base_addr
-                                                                  .offset(import_desc.FirstThunk as
-                                                                          isize))
+                            PIMAGE_THUNK_DATA32>(base_addr
+                            .offset(import_desc.FirstThunk as
+                                isize))
                     };
                 let orig_thunk_ptr: PIMAGE_THUNK_DATA32 =
                     unsafe {
-                        mem::transmute::<PBYTE, 
-                                         PIMAGE_THUNK_DATA32>(base_addr
-                                                                  .offset(import_desc.OriginalFirstThunk as
-                                                                          isize))
+                        mem::transmute::<PBYTE,
+                            PIMAGE_THUNK_DATA32>(base_addr
+                            .offset(import_desc.OriginalFirstThunk as
+                                isize))
                     };
 
                 let mut j = 0;
@@ -250,9 +250,9 @@ impl Module {
                     let import: PIMAGE_IMPORT_BY_NAME =
                         unsafe {
                             mem::transmute::<PBYTE,
-                                             PIMAGE_IMPORT_BY_NAME>(base_addr
-                                                                        .offset(orig_thunk.u1 as
-                                                                                isize))
+                                PIMAGE_IMPORT_BY_NAME>(base_addr
+                                .offset(orig_thunk.u1 as
+                                    isize))
                         };
                     let name_field = offset_of!(IMAGE_IMPORT_BY_NAME => Name);
                     let func_name =
@@ -266,7 +266,7 @@ impl Module {
                             #[allow(unused_variables)]
                             let lock =
                                 MemoryWriteLock::new(iat_ptr_field.apply_ptr(unsafe { thunk_ptr.offset(j) }) as
-                                                     LPVOID,
+                                                         LPVOID,
                                                      mem::size_of::<LPVOID>() as u32);
                             old_func_ptr = unsafe {
                                 kernel32::InterlockedExchange(
@@ -309,7 +309,7 @@ fn test_intercept() {
                                             LPVOID,
                                             DWORD)
                                             -> BOOL,
-                         LPVOID>(myCreatePipe)
+            LPVOID>(myCreatePipe)
     });
     assert!(result.is_some());
 
