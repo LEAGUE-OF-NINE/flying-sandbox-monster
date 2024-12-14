@@ -49,14 +49,40 @@ pub struct Profile {
 
 #[allow(dead_code)]
 impl Profile {
-    pub fn new(profile: &str, path: &str) -> Result<Profile, HRESULT> {
+    /// Creates a new Profile with the specified container name and command line.
+    ///
+    /// # Arguments
+    ///
+    /// * `profile` - The name of the Windows App Container profile/sandbox
+    /// * `cmd_line` - The full command line string to be executed in the container.
+    ///                The command and its arguments will be parsed internally.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Result<Profile, HRESULT>` where:
+    /// - `Ok(Profile)` contains the created Profile instance
+    /// - `Err(HRESULT)` contains the Windows error code if creation failed
+    ///
+    /// # Examples
+    /// ```
+    /// // Launch cmd.exe in container named "test_sandbox"
+    /// let profile = Profile::new("test_sandbox", "cmd.exe /c dir")?;
+    ///
+    /// // Launch PowerShell with arguments in container
+    /// let profile = Profile::new("ps_sandbox", "powershell.exe -NoProfile -Command ls")?;
+    ///```
+    ///
+    /// Note: The command line string is passed as-is and will be parsed internally.
+    /// There's no need to pre-split the arguments - pass the entire command line
+    /// as you would type it in a terminal.
+    pub fn new(profile: &str, cmd_line: &str) -> Result<Profile, HRESULT> {
         let mut pSid: PSID = 0 as PSID;
         let profile_name: Vec<u16> = OsStr::new(profile)
             .encode_wide()
             .chain(once(0))
             .collect();
 
-        let path_obj = Path::new(path);
+        let path_obj = Path::new(cmd_line);
         if !path_obj.exists() || !path_obj.is_file() {
             return Err(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND));
         }
@@ -88,7 +114,7 @@ impl Profile {
 
         Ok(Profile {
             profile: profile.to_string(),
-            command_line: path.to_string(),
+            command_line: cmd_line.to_string(),
             outbound_network: true,
             sid: string_sid,
         })
