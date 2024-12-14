@@ -16,13 +16,13 @@ use super::winffi;
 
 use super::winffi::{HRESULT_FROM_WIN32, SE_GROUP_ENABLED, string_to_sid, sid_to_string,
                     PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES, STARTUPINFOEXW, LPSTARTUPINFOEXW,
-                    HandlePtr, HANDLE_FLAG_INHERIT};
-use self::winapi::{DWORD, LPVOID, LPWSTR, PSID, INVALID_HANDLE_VALUE, PSID_AND_ATTRIBUTES,
+                    HandlePtr};
+use self::winapi::{DWORD, LPVOID, LPWSTR, PSID, PSID_AND_ATTRIBUTES,
                    SID_AND_ATTRIBUTES, ERROR_SUCCESS, ERROR_ALREADY_EXISTS, HRESULT,
                    SECURITY_CAPABILITIES, LPPROC_THREAD_ATTRIBUTE_LIST,
                    PPROC_THREAD_ATTRIBUTE_LIST, SIZE_T, PSIZE_T, PVOID, PSECURITY_CAPABILITIES,
                    STARTUPINFOW, LPSTARTUPINFOW, HANDLE, WORD, LPBYTE, STARTF_USESTDHANDLES,
-                   STARTF_USESHOWWINDOW, SW_HIDE, ERROR_FILE_NOT_FOUND, PROCESS_INFORMATION,
+                   SW_HIDE, ERROR_FILE_NOT_FOUND, PROCESS_INFORMATION,
                    EXTENDED_STARTUPINFO_PRESENT, LPSECURITY_ATTRIBUTES};
 use std::path::Path;
 use std::ffi::OsStr;
@@ -35,7 +35,7 @@ use std::env;
 
 #[cfg(test)]
 use std::path::PathBuf;
-use winapi::LPCWSTR;
+use winapi::{LPCWSTR, STARTF_USESHOWWINDOW};
 #[cfg(test)]
 use self::winapi::{INFINITE, WAIT_OBJECT_0};
 
@@ -225,10 +225,6 @@ impl Profile {
             debug!("Debug mode -- no extended STARTUPINFO");
             si.StartupInfo.cb = mem::size_of::<STARTUPINFOW>() as DWORD;
         }
-
-        si.StartupInfo.dwFlags = STARTF_USESHOWWINDOW;
-
-        si.StartupInfo.wShowWindow = SW_HIDE as WORD;
 
         let cmdLine: Vec<u16> = OsStr::new(&self.command_line)
             .encode_wide()
