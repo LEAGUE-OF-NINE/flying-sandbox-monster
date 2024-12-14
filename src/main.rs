@@ -3,41 +3,35 @@
 
 extern crate winapi;
 extern crate kernel32;
-
-#[macro_use]
 extern crate log;
 
 mod appcontainer;
 mod winffi;
 
-use std::path::Path;
-
 fn start_game(profile_name: &str, command_line: &str) -> () {
-    info!("profile_name = {:}", profile_name);
-    info!("command_line = {:?}", command_line);
+    println!("profile_name = {:}", profile_name);
+    println!("command_line = {:?}", command_line);
 
     let profile = match appcontainer::Profile::new(profile_name, command_line) {
         Ok(val) => {
-            info!("New AppContainer profile created!");
+            println!("New AppContainer profile created!");
             val
         }
         Err(x) => {
-            error!("Failed to create AppContainer profile for {:}: GLE={:}",
+            panic!("Failed to create AppContainer profile for {:}: GLE={:}",
                    profile_name,
                    x);
-            return;
         }
     };
 
-    info!("profile SID = {:?}", profile.sid);
+    println!("profile SID = {:?}", profile.sid);
     match profile.launch() {
-        Ok(val) => {
-            info!("Child AppContainer'd process launched!");
-            val
+        Ok(_) => {
+            println!("Child AppContainer'd process launched at {}", profile.folder);
+            return;
         }
         Err(x) => {
-            error!("Failed to launch sandboxed process! GLE={:}", x);
-            return;
+            panic!("Failed to launch sandboxed process! GLE={:}", x);
         }
     };
 }

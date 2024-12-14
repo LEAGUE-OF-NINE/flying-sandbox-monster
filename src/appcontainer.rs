@@ -36,6 +36,7 @@ use std::env;
 #[cfg(test)]
 use std::path::PathBuf;
 use winapi::LPCWSTR;
+use winffi::get_app_container_folder_path;
 #[cfg(test)]
 use self::winapi::{INFINITE, WAIT_OBJECT_0};
 
@@ -45,6 +46,7 @@ pub struct Profile {
     command_line: String,
     outbound_network: bool,
     pub sid: String,
+    pub folder: String,
 }
 
 #[allow(dead_code)]
@@ -105,7 +107,7 @@ impl Profile {
             }
         }
 
-        let string_sid = match sid_to_string(pSid) {
+        let info = match sid_to_string(pSid) {
             Ok(x) => x,
             Err(x) => return Err(x as HRESULT),
         };
@@ -116,7 +118,8 @@ impl Profile {
             profile: profile.to_string(),
             command_line: cmd_line.to_string(),
             outbound_network: true,
-            sid: string_sid,
+            sid: info.sid,
+            folder: info.folder
         })
     }
 

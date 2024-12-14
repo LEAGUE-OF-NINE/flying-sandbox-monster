@@ -132,6 +132,11 @@ impl Drop for SidPtr {
     }
 }
 
+pub struct ProfileInfo {
+    pub sid: String,
+    pub folder: String,
+}
+
 pub fn string_to_sid(StringSid: &str) -> Result<SidPtr, DWORD> {
     let mut pSid: PSID = 0 as PSID;
     let wSid: Vec<u16> = OsStr::new(StringSid)
@@ -146,18 +151,54 @@ pub fn string_to_sid(StringSid: &str) -> Result<SidPtr, DWORD> {
     Ok(SidPtr::new(pSid))
 }
 
-pub fn sid_to_string(pSid: PSID) -> Result<String, DWORD> {
+pub fn sid_to_string(pSid: PSID) -> Result<ProfileInfo, DWORD> {
     let mut rawStringSid: LPWSTR = 0 as LPWSTR;
+    let mut rawStringPath: LPWSTR = 0 as LPWSTR;
 
-    if unsafe { ConvertSidToStringSidW(pSid, &mut rawStringSid) } == 0 ||
-        rawStringSid == (0 as LPWSTR) {
+    let result = unsafe {
+        let converted = ConvertSidToStringSidW(pSid, &mut rawStringSid);
+        if converted == 0 || rawStringSid == (0 as LPWSTR) {
+            return Err(kernel32::GetLastError());
+        }
+
+        let rawStringSidLen = libc::wcslen(rawStringSid);
+        let sid = WideString::from_ptr(rawStringSid, rawStringSidLen);
+        kernel32::LocalFree(rawStringSid as HLOCAL);
+
+        let result = GetAppContainerFolderPath(rawStringSid, &mut rawStringPath);
+        if result != 0 {
+            return Err(kernel32::GetLastError());
+        }
+
+        let rawStringSidLen = libc::wcslen(rawStringPath);
+        let path = WideString::from_ptr(rawStringPath, rawStringSidLen);
+        kernel32::LocalFree(rawStringPath as HLOCAL);
+
+        (sid, path)
+    };
+
+    Ok(ProfileInfo {
+        sid: result.0.to_string_lossy(),
+        folder: result.1.to_string_lossy(),
+    })
+}
+
+pub fn get_app_container_folder_path(StringSid: &str) -> Result<String, DWORD> {
+    let mut rawStringPath: PWSTR = 0 as PWSTR;
+    let wSid: Vec<u16> = OsStr::new(StringSid)
+        .encode_wide()
+        .chain(once(0))
+        .collect();
+
+    if unsafe { GetAppContainerFolderPath(wSid.as_ptr(), &mut rawStringPath) } != 0
+        || rawStringPath == (0 as PWSTR) {
         return Err(unsafe { kernel32::GetLastError() });
     }
 
-    let rawStringSidLen = unsafe { libc::wcslen(rawStringSid) };
-    let out = unsafe { WideString::from_ptr(rawStringSid, rawStringSidLen) };
+    let rawStringSidLen = unsafe { libc::wcslen(rawStringPath) };
+    let out = unsafe { WideString::from_ptr(rawStringPath, rawStringSidLen) };
 
-    unsafe { kernel32::LocalFree(rawStringSid as HLOCAL) };
+    unsafe { kernel32::LocalFree(rawStringPath as HLOCAL) };
 
     Ok(out.to_string_lossy())
 }
@@ -181,7 +222,7 @@ fn test_sid_conv() {
     let result2 = sid_to_string(result.unwrap().raw_ptr);
     assert!(result2.is_ok());
 
-    assert_eq!(result2.unwrap(), orig_sid);
+    assert_eq!(result2.unwrap().sid, orig_sid);
 }
 
 pub struct HandlePtr {
@@ -270,4 +311,7 @@ extern "system" {
                                                      ppsidAppContainerSid: *mut PSID)
                                                      -> HRESULT;
     pub fn DeleteAppContainerProfile(pszAppContainerName: PCWSTR) -> HRESULT;
+
+    pub fn GetAppContainerFolderPath(pszAppContainerSid: PCWSTR,
+                                     ppszPath: *mut PWSTR) -> HRESULT;
 }
