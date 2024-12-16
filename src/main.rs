@@ -1,11 +1,11 @@
 #![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]
 
-extern crate winapi;
 extern crate kernel32;
 extern crate log;
+extern crate winapi;
 
-mod appcontainer;
+pub mod appcontainer;
 mod winffi;
 
 fn start_game(profile_name: &str, command_line: &str) -> () {
@@ -18,16 +18,20 @@ fn start_game(profile_name: &str, command_line: &str) -> () {
             val
         }
         Err(x) => {
-            panic!("Failed to create AppContainer profile for {:}: GLE={:}",
-                   profile_name,
-                   x);
+            panic!(
+                "Failed to create AppContainer profile for {:}: GLE={:}",
+                profile_name, x
+            );
         }
     };
 
     println!("profile SID = {:?}", profile.sid);
     match profile.launch() {
         Ok(_) => {
-            println!("Child AppContainer'd process launched at {}", profile.folder);
+            println!(
+                "Child AppContainer'd process launched at {}",
+                profile.folder
+            );
             return;
         }
         Err(x) => {
@@ -37,6 +41,7 @@ fn start_game(profile_name: &str, command_line: &str) -> () {
 }
 
 fn main() {
-    let cmd_line = "C:\\Users\\carra\\AppData\\Local\\Packages\\zweilauncher3\\AC\\game\\LimbusCompany.exe";
+    let cmd_line =
+        "C:\\Users\\carra\\AppData\\Local\\Packages\\zweilauncher3\\AC\\game\\LimbusCompany.exe";
     start_game("zweilauncher3", cmd_line);
 }
