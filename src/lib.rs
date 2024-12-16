@@ -6,9 +6,9 @@ extern crate log;
 extern crate winapi;
 
 pub mod appcontainer;
-mod winffi;
+pub mod winffi;
 
-fn start_game(profile_name: &str, command_line: &str) -> () {
+pub fn start_game(profile_name: &str, command_line: &str) -> () {
     println!("profile_name = {:}", profile_name);
     println!("command_line = {:?}", command_line);
 
@@ -38,10 +38,4 @@ fn start_game(profile_name: &str, command_line: &str) -> () {
             panic!("Failed to launch sandboxed process! GLE={:}", x);
         }
     };
-}
-
-fn main() {
-    let cmd_line =
-        "C:\\Users\\carra\\AppData\\Local\\Packages\\zweilauncher3\\AC\\game\\LimbusCompany.exe";
-    start_game("zweilauncher3", cmd_line);
 }
