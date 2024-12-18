@@ -83,11 +83,16 @@ impl Profile {
         let profile_name: Vec<u16> = OsStr::new(profile).encode_wide().chain(once(0)).collect();
 
         // Skip path validation if cmd_line is empty
-        if !cmd_line.is_empty() {
-            let path_obj = Path::new(cmd_line);
-            if !path_obj.exists() || !path_obj.is_file() {
-                return Err(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND));
-            }
+
+        let command_line = if cmd_line.is_empty() {
+            "cmd.exe".to_string() // Default executable
+        } else {
+            cmd_line.to_string()
+        };
+
+        let path_obj = Path::new(cmd_line);
+        if !path_obj.exists() || !path_obj.is_file() {
+            return Err(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND));
         }
 
         let mut hr = unsafe {
