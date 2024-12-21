@@ -50,6 +50,29 @@ pub struct Profile {
     pub folder: String,
 }
 
+pub fn get_full_appcontainer_sid_from_profile_name(profile_name: &str) -> Result<String, HRESULT> {
+    let mut pSid: PSID = std::ptr::null_mut();
+    let profile_name_wide: Vec<u16> = OsStr::new(profile_name)
+        .encode_wide()
+        .chain(once(0))
+        .collect();
+
+    let hr = unsafe {
+        winffi::DeriveAppContainerSidFromAppContainerName(profile_name_wide.as_ptr(), &mut pSid)
+    };
+
+    if hr != ERROR_SUCCESS as HRESULT {
+        return Err(hr);
+    }
+
+    let sid_string = sid_to_string(pSid).map_err(|e| HRESULT_FROM_WIN32(e))?; // Convert any error to an HRESULT.
+
+    // Free the SID when done to avoid memory leaks
+    unsafe { winffi::FreeSid(pSid) };
+
+    Ok(sid_string)
+}
+
 #[allow(dead_code)]
 impl Profile {
     /// Creates a new Profile with the specified container name and command line.
@@ -220,7 +243,6 @@ impl Profile {
             );
             return Err(unsafe { kernel32::GetLastError() });
         }
-
         attrBuf = Vec::with_capacity(listSize as usize);
         if unsafe {
             kernel32::InitializeProcThreadAttributeList(
