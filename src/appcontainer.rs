@@ -50,7 +50,7 @@ pub struct Profile {
     pub folder: String,
 }
 
-pub fn get_full_appcontainer_sid_from_profile_name(profile_name: &str) -> Result<String, HRESULT> {
+pub fn get_profile_info_from_profile_name(profile_name: &str) -> Result<ProfileInfo, HRESULT> {
     let mut pSid: PSID = std::ptr::null_mut();
     let profile_name_wide: Vec<u16> = OsStr::new(profile_name)
         .encode_wide()
@@ -65,7 +65,7 @@ pub fn get_full_appcontainer_sid_from_profile_name(profile_name: &str) -> Result
         return Err(hr);
     }
 
-    let sid_string = sid_to_string(pSid).map_err(|e| HRESULT_FROM_WIN32(e))?; // Convert any error to an HRESULT.
+    let sid_string = sid_to_string(pSid).map_err(HRESULT_FROM_WIN32)?; // Convert any error to an HRESULT.
 
     // Free the SID when done to avoid memory leaks
     unsafe { winffi::FreeSid(pSid) };
