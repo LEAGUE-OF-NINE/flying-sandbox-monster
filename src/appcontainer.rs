@@ -22,7 +22,7 @@ use self::winapi::{
     STARTUPINFOW, WORD,
 };
 use super::winffi::{
-    sid_to_string, string_to_sid, HandlePtr, HRESULT_FROM_WIN32, LPSTARTUPINFOEXW,
+    sid_to_string, string_to_sid, HandlePtr, ProfileInfo, HRESULT_FROM_WIN32, LPSTARTUPINFOEXW,
     PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES, SE_GROUP_ENABLED, STARTUPINFOEXW,
 };
 use std::ffi::OsStr;
